@@ -13,7 +13,7 @@ class Kernel
         $router = new \App\Core\Infrastructure\Router();
         $loader = new \App\Core\Infrastructure\RouterLoader($router);
         
-        $modulesPath = dirname(__DIR__, 3) . '/Modules';
+        $modulesPath = dirname(__DIR__, 2) . '/Modules';
         if (is_dir($modulesPath)) {
             foreach (scandir($modulesPath) as $module) {
                 if ($module === '.' || $module === '..') continue;

@@ -17,13 +17,6 @@ $controller = new UserController($getUser, $listUsers, $createUser);
 return [
     [
         'method' => 'GET',
-        'path' => '/users/{id}',
-        'handler' => function ($id) use ($controller) {
-            $controller->get($id);
-        },
-    ],
-    [
-        'method' => 'GET',
         'path' => '/users',
         'handler' => function () use ($controller) {
             $controller->list();
@@ -41,6 +34,13 @@ return [
         'path' => '/users/create',
         'handler' => function () use ($controller) {
             $controller->showCreateForm();
+        },
+    ],
+    [
+        'method' => 'GET',
+        'path' => '/users/{id}',
+        'handler' => function ($id) use ($controller) {
+            $controller->get($id);
         },
     ],
     [

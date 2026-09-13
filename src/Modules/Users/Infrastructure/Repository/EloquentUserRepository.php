@@ -16,7 +16,7 @@ class EloquentUserRepository implements UserRepositoryInterface
         if (!$model) {
             return null;
         }
-        return new User($model->id, $model->email, $model->name);
+        return new User((string)$model->id, $model->email, $model->name);
     }
 
     public function save(User $user): void
@@ -32,7 +32,7 @@ class EloquentUserRepository implements UserRepositoryInterface
         $models = UserModel::all();
         $users = [];
         foreach ($models as $model) {
-            $users[] = new User($model->id, $model->email, $model->name);
+            $users[] = new User((string)$model->id, $model->email, $model->name);
         }
         return $users;
     }
