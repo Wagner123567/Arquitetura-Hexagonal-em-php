@@ -1,0 +1,92 @@
+Arquitetura Modular Monolito PHP
+================================
+
+Objetivo
+--------
+Um único código deployável, com limites claros por módulo/bounded context. Simples de desenvolver, testável e pronto para extrair serviços quando necessário.
+
+Princípios
+----------
+- Separação por camadas Hexagonal leve: Domain no centro, nada depende dele.
+- Módulo = Bounded Context isolado. Cada módulo tem seu próprio Domain, Application, Infrastructure e Interface.
+- Dependência unidirecional: Interface -> Application -> Domain. Domain não conhece infraestrutura.
+- Comunicação entre módulos via Event Bus, nunca chamadas diretas.
+- PSR-4 autoload por namespace App\Core, App\Modules, App\Shared.
+
+Estrutura
+---------
+src/
+  Core/                 Kernel compartilhado
+    Application/        Contratos comuns, Kernel de bootstrap, EventBusInterface
+    Domain/             Conceitos compartilhados, se houver
+    Infrastructure/     Container DI, logging base
+  Modules/{Nome}/       Um módulo por contexto de negócio
+    Domain/             Entidades, Value Objects, Domain Services, Interfaces de Repository
+    Application/        Use Cases, DTOs, orquestração de regras de aplicação
+    Infrastructure/     Implementações de Repository, mappers, clientes externos
+    Interface/          Controllers HTTP, CLI commands, presenters
+  Shared/
+    Kernel/             Exceptions base, contratos reutilizáveis
+    Infrastructure/     Conexões DB, Redis, Queue, HTTP client reutilizáveis
+
+Fluxo de requisição
+-------------------
+HTTP -> public/index.php -> Kernel -> Roteador -> Controller na Interface do módulo
+Controller recebe DTO, chama Use Case na Application.
+Use Case valida regra de aplicação, usa Repository Interface do Domain.
+Repository Interface é implementada em Infrastructure do módulo.
+Domain contém apenas entidades e lógica de negócio pura, sem dependência externa.
+
+Event Bus
+---------
+Core\Application\EventBusInterface permite desacoplar módulos.
+Exemplo: OrderCreated dispara atualização em Billing sem Billing conhecer Orders.
+Publicar evento é responsabilidade da Application. Handlers ficam em Infrastructure de outros módulos.
+
+Módulo exemplo Users
+--------------------
+Domain\Entity\User          Entidade rica, regras de negócio internas.
+Domain\Repository\UserRepositoryInterface  Contrato de acesso a dados.
+Application\UseCase\GetUserUseCase  Caso de uso, orquestra regra e mapeia para output.
+Infrastructure\Repository\InMemoryUserRepository Implementação concreta do repositório.
+Interface\Http\UserController  Adapta HTTP para Use Case.
+
+Escalabilidade
+--------------
+- Horizontal: PHP-FPM + Nginx + Load Balancer. Cache Redis, DB read replicas.
+- Assíncrono: Queue para jobs pesados por módulo.
+- Observabilidade: logs por módulo, métricas por Use Case.
+- Evolução para microserviços: um módulo pode ser extraído mantendo Domain e Application intactos.
+
+Boas práticas
+-------------
+- Não referencie Domain de outro módulo. Use eventos ou Shared Kernel mínimo.
+- Mantenha Infrastructure fora do Domain.
+- Tests por camada: unitários no Domain, integration nos Repositories, functional nos Controllers.
+- Namespaces consistentes com pastas.
+- Não coloque lógica de negócio em Controllers ou Repositories.
+
+Vantagens
+---------
+Simplicidade operacional de um monolito com isolamento de código de microserviços.
+Fácil refatoração e testes. Migração incremental quando um contexto crescer demais.
+
+ORM Eloquent
+------------
+Utiliza illuminate/database para um ORM ativo similar ao Laravel.
+
+Shared\Infrastructure\Eloquent\Model estende Illuminate\Database\Eloquent\Model e serve como base para todos os models.
+
+Cada módulo define seus Models em Infrastructure\Eloquent e os Repositories implementam a interface do Domain usando esses Models.
+
+config/database.php centraliza conexão. Core\Infrastructure\Database::boot inicializa Capsule com Illuminate.
+
+Roteamento organizado
+---------------------
+Core\Infrastructure\Router gerencia registro de rotas.
+Core\Infrastructure\RouterLoader carrega routes.php de cada módulo em Modules/{Nome}/Interface/Routes/routes.php.
+
+Cada módulo expõe rotas em seu próprio arquivo retornando array com method, path e handler.
+Kernel inicializa Database, cria Router, carrega rotas dos módulos e despacha request.
+
+Isso mantém rotas co-localizadas com o módulo, evitando arquivo central gigante.
